@@ -213,6 +213,20 @@ void USB_HP_CAN1_TX_IRQHandler(void)
   /* USER CODE END USB_HP_CAN1_TX_IRQn 1 */
 }
 
+/**
+  * @brief This function handles USB low priority or CAN RX0 interrupts.
+  */
+void USB_LP_CAN1_RX0_IRQHandler(void)
+{
+  /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 0 */
+
+  /* USER CODE END USB_LP_CAN1_RX0_IRQn 0 */
+  HAL_PCD_IRQHandler(&hpcd_USB_FS);
+  /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 1 */
+
+  /* USER CODE END USB_LP_CAN1_RX0_IRQn 1 */
+}
+
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */
