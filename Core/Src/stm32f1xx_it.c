@@ -85,7 +85,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-
+	  asm("bkpt");
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
@@ -205,7 +205,8 @@ void SysTick_Handler(void)
 void USB_HP_CAN1_TX_IRQHandler(void)
 {
   /* USER CODE BEGIN USB_HP_CAN1_TX_IRQn 0 */
-
+	tud_int_handler(BOARD_DEVICE_RHPORT_NUM);
+	return;	// newer call ST handler!
   /* USER CODE END USB_HP_CAN1_TX_IRQn 0 */
   HAL_PCD_IRQHandler(&hpcd_USB_FS);
   /* USER CODE BEGIN USB_HP_CAN1_TX_IRQn 1 */
@@ -219,7 +220,8 @@ void USB_HP_CAN1_TX_IRQHandler(void)
 void USB_LP_CAN1_RX0_IRQHandler(void)
 {
   /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 0 */
-
+	tud_int_handler(BOARD_DEVICE_RHPORT_NUM);
+	return;	// newer call ST handler!
   /* USER CODE END USB_LP_CAN1_RX0_IRQn 0 */
   HAL_PCD_IRQHandler(&hpcd_USB_FS);
   /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 1 */
