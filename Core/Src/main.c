@@ -241,6 +241,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  initialize();
   while (1)
   {
 	    tud_task(); // tinyusb device task
