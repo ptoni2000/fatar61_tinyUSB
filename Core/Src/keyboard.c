@@ -10,29 +10,27 @@
 
 // Possible key states
 typedef enum {
-  KEY_IS_UP,
-  KEY_IS_DOWN,
-  KEY_IS_GOING_UP,    // We increment the timer in this state
-  KEY_IS_GOING_DOWN,  // We increment the timer in this state
+	KEY_IS_UP, KEY_IS_DOWN, KEY_IS_GOING_UP, // We increment the timer in this state
+	KEY_IS_GOING_DOWN,  // We increment the timer in this state
 } state_t;
 
 // Possible events
 typedef enum {
-  KEY_PRESSED,    // Key is pressed
-  KEY_DOWN,       // Key reached bottom
-  KEY_RELEASED,   // Key was released
-  KEY_UP,         // Key reached top
+	KEY_PRESSED,    // Key is pressed
+	KEY_DOWN,       // Key reached bottom
+	KEY_RELEASED,   // Key was released
+	KEY_UP,         // Key reached top
 } event_t;
 
 typedef struct {
-  char			midi_note	:8;
-  state_t       state		:4; // Bit fields
-  unsigned int  t    		:7; // Lines up nicely to 16bits, t overflows at 4096
+	char midi_note :8;
+	state_t state :4; // Bit fields
+	unsigned int t :7; // Lines up nicely to 16bits, t overflows at 4096
 } midikey_t;
 
 typedef struct {
-  uint8_t top;
-  uint8_t bottom;
+	uint8_t top;
+	uint8_t bottom;
 } bank_t;
 #define NUM_KEYS 61
 
@@ -44,60 +42,56 @@ midikey_t keys[NUM_KEYS];
 bank_t banks[NUM_BANKS];
 bank_t prev_banks[NUM_BANKS];
 uint8_t program = 0;
+uint8_t const cable_num = 0; // MIDI jack associated with USB endpoint
+uint8_t const channel = 1; // 0 for channel 1
 
-void initialize()
-{
+void initialize() {
 	tu_printf("%s\n", __func__);
 
 	// Init keys
-	for ( int key = 0; key < NUM_KEYS; key++) {
+	for (int key = 0; key < NUM_KEYS; key++) {
 		keys[key].midi_note = 24 + key;
 		keys[key].t = 0;
 	}
 
-	for(int i = 0; i< NUM_BANKS; i++) {
+	for (int i = 0; i < NUM_BANKS; i++) {
 		banks[i].top = 0;
 		banks[i].bottom = 1;
 	}
 	memcpy(prev_banks, banks, sizeof(prev_banks));
 
-//	HAL_TIM_Base_Start(&htim1);
 	HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
 	HAL_TIM_Base_Start_IT(&htim2);
-
 }
 
 void trigger(midikey_t *key, event_t event) {
-	  uint8_t const cable_num = 0; // MIDI jack associated with USB endpoint
-	  uint8_t const channel   = 1; // 0 for channel 1
 
-	if(event == KEY_PRESSED) {
+	if (event == KEY_PRESSED) {
 		key->state = KEY_IS_GOING_DOWN;
-		HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 		tu_printf("GOING DOWN %d\n", key->midi_note);
 
 	} else if (event == KEY_DOWN) {
-		if(key->state == KEY_IS_GOING_DOWN) {
+		if (key->state == KEY_IS_GOING_DOWN) {
 			key->state = KEY_IS_DOWN;
-			HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 			// Send Note On on channel 1.
-			uint8_t note_on[3] = { 0x90 | channel, key->midi_note, 127- key->t };
+			uint8_t note_on[3] =
+					{ 0x90 | channel, key->midi_note, 127 - key->t };
 			tud_midi_stream_write(cable_num, note_on, 3);
-			tu_printf("DN %d %d\n", key->midi_note, 127- key->t);
+			tu_printf("DN %d %d\n", key->midi_note, 127 - key->t);
 			key->t = 0;
 		}
 	} else if (event == KEY_RELEASED) {
 		key->state = KEY_IS_GOING_UP;
 		tu_printf("GOING UP %d\n", key->midi_note);
 
-	} else if ( event == KEY_UP) {
-		if(key->state == KEY_IS_GOING_UP) {
+	} else if (event == KEY_UP) {
+		if (key->state == KEY_IS_GOING_UP) {
 			key->state = KEY_IS_UP;
-			HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 			// Send Note Off on channel 1.
-			uint8_t note_off[3] = { 0x80 | channel, key->midi_note, 127- key->t };
+			uint8_t note_off[3] =
+					{ 0x80 | channel, key->midi_note, 127 - key->t };
 			tud_midi_stream_write(cable_num, note_off, 3);
-			tu_printf("UP %d %d\n", key->midi_note, 127- key->t);
+			tu_printf("UP %d %d\n", key->midi_note, 127 - key->t);
 			key->t = 0;
 		}
 	}
@@ -105,10 +99,11 @@ void trigger(midikey_t *key, event_t event) {
 
 void increment() {
 	// Advance timers
-	for(int key = 0; key < NUM_KEYS; key++) {
+	for (int key = 0; key < NUM_KEYS; key++) {
 		state_t state = keys[key].state;
-		if(state == KEY_IS_GOING_UP || state == KEY_IS_GOING_DOWN) {
-			if(keys[key].t < 126) keys[key].t++;
+		if (state == KEY_IS_GOING_UP || state == KEY_IS_GOING_DOWN) {
+			if (keys[key].t < 126)
+				keys[key].t++;
 		}
 	}
 }
@@ -119,20 +114,16 @@ void increment() {
 //	while (__HAL_TIM_GET_COUNTER(&htim1) < us);  // wait for the counter to reach the us input in the parameter
 //}
 
-void delay_us(uint32_t delay_us)
-{
-  volatile unsigned int num;
-  volatile unsigned int t;
+void delay_us(uint32_t delay_us) {
+	volatile unsigned int num;
+	volatile unsigned int t;
 
-
-  for (num = 0; num < delay_us; num++)
-  {
-    t = 11;
-    while (t != 0)
-    {
-      t--;
-    }
-  }
+	for (num = 0; num < delay_us; num++) {
+		t = 11;
+		while (t != 0) {
+			t--;
+		}
+	}
 }
 
 uint32_t deb[NUM_BANKS];
@@ -142,45 +133,48 @@ void scan(void) {
 	int i;
 
 	// Scan and store
-	for(int bank = 0; bank < NUM_BANKS; bank++) {
+	for (int bank = 0; bank < NUM_BANKS; bank++) {
 		prev_banks[bank] = banks[bank]; // Store previous state so we can look for changes
 
-		GPIOA->ODR |= (1<<bank)&0xff; // Selects bottom row
+		GPIOA->ODR |= (1 << bank) & 0xff; // Selects bottom row
 		delay_us(10); // wait voltage stabilize
-		for (i=0; i<3; i++) {
+		for (i = 0; i < 3; i++) {
 			val[i] = GPIOB->IDR;
 			delay_us(10); // wait voltage stabilize
 		}
 
-		for (i=0; i<16; i++) {
+		for (i = 0; i < 16; i++) {
 			count[i] = 0;
-			if(val[0] & 1<<i) ++count[i];
-			if(val[1] & 1<<i) ++count[i];
-			if(val[2] & 1<<i) ++count[i];
-			if(count[i] == 3) {
-				deb[bank] |= (1<<i);
-			}
-			else {
-				deb[bank] &= ~(1<<i);
+			if (val[0] & 1 << i)
+				++count[i];
+			if (val[1] & 1 << i)
+				++count[i];
+			if (val[2] & 1 << i)
+				++count[i];
+			if (count[i] == 3) {
+				deb[bank] |= (1 << i);
+			} else {
+				deb[bank] &= ~(1 << i);
 			}
 		}
 
 		banks[bank].bottom = deb[bank] & 0xff;
-		banks[bank].top    = deb[bank] >> 8;
-		GPIOA->ODR &=  ~((1<<bank)&0xff); // Selects bottom row
+		banks[bank].top = deb[bank] >> 8;
+		GPIOA->ODR &= ~((1 << bank) & 0xff); // Selects bottom row
 	}
 
 	// Process
-	for(int bank = 0; bank < NUM_BANKS; bank++) {
+	for (int bank = 0; bank < NUM_BANKS; bank++) {
 
 		uint8_t diff;
 
 		// Check top switches and fire events
 		diff = banks[bank].top ^ prev_banks[bank].top;
-		if(diff) {
-			for(int key = 0; key < 8; key++) {
-				if(diff & (1<<key)) {
-					event_t event = banks[bank].top & (1<<key) ? KEY_UP : KEY_PRESSED;
+		if (diff) {
+			for (int key = 0; key < 8; key++) {
+				if (diff & (1 << key)) {
+					event_t event =
+							banks[bank].top & (1 << key) ? KEY_UP : KEY_PRESSED;
 					trigger(&keys[bank + 8 * key], event);
 				}
 			}
@@ -188,43 +182,45 @@ void scan(void) {
 
 		// Check bottom switches and fire events
 		diff = banks[bank].bottom ^ prev_banks[bank].bottom;
-		if(diff) {
-			for(int key = 0; key < 8; key++) {
-				if(diff & (1<<key)) {
-					event_t event = banks[bank].bottom & (1<<key) ? KEY_DOWN : KEY_RELEASED;
+		if (diff) {
+			for (int key = 0; key < 8; key++) {
+				if (diff & (1 << key)) {
+					event_t event =
+							banks[bank].bottom & (1 << key) ?
+									KEY_DOWN : KEY_RELEASED;
 					trigger(&keys[bank + 8 * key], event);
 				}
 			}
 		}
-
 	}
-
 }
 
-void encoder(void)
-{
+void encoder(void) {
 	uint32_t encoder_val;
 	static uint32_t old_encoder = 0;
 	static uint32_t now = 0;
 	static int update = 0;
 
-	encoder_val = (TIM1->CNT)>>2;
+	encoder_val = (TIM1->CNT) >> 2;
 
-	if(old_encoder != encoder_val) {
+	if (old_encoder != encoder_val) {
 		now = HAL_GetTick();
 		update = 1;
 		old_encoder = encoder_val;
 	}
 
-	if(HAL_GetTick() - now > 200 && update) {
+	if (HAL_GetTick() - now > 200 && update) {
 		program = encoder_val % 127;
-		MIDI_pc_update(1, program);
+		// Send program change on channel 1.
+		uint8_t prog_change[2] = { 0xC0 | channel, program };
+		tud_midi_stream_write(cable_num, prog_change, 2);
+		tu_printf("PC %d\n", program);
 		update = 0;
 	}
 
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 	if (htim->Instance == TIM2) {
 		//scan();
@@ -232,8 +228,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 	}
 }
 
-void midi_task()
-{
+void midi_task() {
 	scan();
 	encoder();
 }
