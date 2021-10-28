@@ -19,7 +19,7 @@
 // 1 : print error
 // 2 : print warning
 // 3 : print info
-#define CFG_TUSB_DEBUG           2
+#define CFG_TUSB_DEBUG           1
 
 
 /* USB DMA on some MCUs can only access a specific SRAM region with restriction on alignment.

@@ -75,7 +75,7 @@ void initialize() {
 	memcpy(prev_banks, banks, sizeof(prev_banks));
 
 	HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
-	HAL_TIM_Base_Start_IT(&htim2);
+
 }
 
 void trigger(midikey_t *key, event_t event) {
@@ -115,23 +115,6 @@ void trigger(midikey_t *key, event_t event) {
 		}
 	}
 }
-
-void increment() {
-	// Advance timers
-	for (int key = 0; key < NUM_KEYS; key++) {
-		state_t state = keys[key].state;
-		if (state == KEY_IS_GOING_UP || state == KEY_IS_GOING_DOWN) {
-			if (keys[key].t < 126)
-				keys[key].t++;
-		}
-	}
-}
-
-//void delay_us (uint16_t us)
-//{
-//	__HAL_TIM_SET_COUNTER(&htim1,0);  // set the counter value a 0
-//	while (__HAL_TIM_GET_COUNTER(&htim1) < us);  // wait for the counter to reach the us input in the parameter
-//}
 
 void delay_us(uint32_t delay_us) {
 	volatile unsigned int num;
@@ -237,14 +220,6 @@ void encoder(void) {
 		update = 0;
 	}
 
-}
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-
-	if (htim->Instance == TIM2) {
-		//scan();
-		increment();
-	}
 }
 
 void midi_task() {
