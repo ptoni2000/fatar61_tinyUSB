@@ -1,3 +1,9 @@
 [submodule "tinyusb"]
 	path = tinyusb
 	url = https://github.com/hathach/tinyusb.git
+[submodule "soft-i2c"]
+	path = soft-i2c
+	url = https://github.com/liyanboy74/soft-i2c.git
+[submodule "stm32-ssd1306"]
+	path = stm32-ssd1306
+	url = https://github.com/afiskon/stm32-ssd1306.git

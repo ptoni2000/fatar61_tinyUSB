@@ -7,6 +7,8 @@
 #include <stdint.h>
 
 #include "main.h"
+#include "i2c_sw.h"
+#include "ssd1306.h"
 
 // Possible key states
 typedef enum {
@@ -42,6 +44,8 @@ midikey_t keys[NUM_KEYS];
 bank_t banks[NUM_BANKS];
 bank_t prev_banks[NUM_BANKS];
 uint8_t program = 0;
+uint8_t sent_prog = 0;
+
 uint8_t const cable_num = 0; // MIDI jack associated with USB endpoint
 uint8_t const channel = 1; // 0 for channel 1
 //Velocity curves
@@ -59,6 +63,146 @@ const uint8_t* velocityCurves[]={
   concaveCurve
 };
 
+char *program_name[128] = {
+		// Piano
+		"Acoustic Grand Piano",
+		"Bright Acoustic Piano",
+		"Electric Grand Piano",
+		"Honky-tonk Piano",
+		"Electric Piano 1",
+		"Electric Piano 2",
+		"Harpsichord",
+		"Clavinet",
+		// Chromatic Percussion
+		"Celesta",
+		"Glockenspiel",
+		"Music Box",
+		"Vibraphone",
+		"Marimba",
+		"Xylophone",
+		"Tubular Bells",
+		"Dulcimer",
+		// Organ
+		"Drawbar Organ",
+		"Percussive Organ",
+		"Rock Organ",
+		"Church Organ",
+		"Reed Organ",
+		"Accordion",
+		"Harmonica",
+		"Acoustic Guitar (nylon)",
+		"Acoustic Guitar (steel)",
+		"Electric Guitar (jazz)",
+		"Electric Guitar (clean)",
+		"Electric Guitar (muted)",
+		"Overdriven Guitar",
+		"Distortion Guitar",
+		"Guitar Harmonics",
+		"Acoustic Bass",
+		"Electric Bass (finger)",
+		"Electric Bass (pick)",
+		"Fretless Bass",
+		"Slap Bass 1",
+		"Slap Bass 2",
+		"Synth Bass 1",
+		"Synth Bass 2",
+		"Violin",
+		"Viola",
+		"Cello",
+		"Contrabass",
+		"Tremolo Strings",
+		"Pizzicato Strings",
+		"Orchestral Harp",
+		"Timpani",
+		"String Ensemble 1",
+		"String Ensemble 2",
+		"Synth Strings 1",
+		"Synth Strings 2",
+		"Choir Aahs",
+		"Voice Oohs",
+		"Synth Choir",
+		"Orchestra Hit",
+		"Trumpet",
+		"Trombone",
+		"Tuba",
+		"Muted Trumpet",
+		"French Horn",
+		"Brass Section",
+		"Synth Brass 1",
+		"Synth Brass 2",
+		"Soprano Sax",
+		"Alto Sax",
+		"Tenor Sax",
+		"Baritone Sax",
+		"Oboe",
+		"English Horn",
+		"Bassoon",
+		"Clarinet",
+		// Pipe
+		"Piccolo",
+		"Flute",
+		"Recorder",
+		"Pan Flute",
+		"Blown bottle",
+		"Shakuhachi",
+		"Whistle",
+		"Ocarina",
+		// Synth Lead
+		"Lead 1 (square)",
+		"Lead 2 (sawtooth)",
+		"Lead 3 (calliope)",
+		"Lead 4 (chiff)",
+		"Lead 5 (charang)",
+		"Lead 6 (voice)",
+		"Lead 7 (fifths)",
+		"Lead 8 (bass + lead)",
+		// Synth Pad
+		"Pad 1 (new age)",
+		"Pad 2 (warm)",
+		"Pad 3 (polysynth)",
+		"Pad 4 (choir)",
+		"Pad 5 (bowed)",
+		"Pad 6 (metallic)",
+		"Pad 7 (halo)",
+		"Pad 8 (sweep)",
+		// Synth Effects
+		"FX 1 (rain)",
+		"FX 2 (soundtrack)",
+		"FX 3 (crystal)",
+		"FX 4 (atmosphere)",
+		"FX 5 (brightness)",
+		"FX 6 (goblins)",
+		"FX 7 (echoes)",
+		"FX 8 (sci-fi)",
+		// Ethnic
+		"Sitar",
+		"Banjo",
+		"Shamisen",
+		"Koto",
+		"Kalimba",
+		"Bagpipe",
+		"Fiddle",
+		"Shanai",
+		// Percussive
+		"Tinkle Bell",
+		"Agogo",
+		"Steel Drums",
+		"Woodblock",
+		"Taiko Drum",
+		"Melodic Tom",
+		"Synth Drum",
+		"Reverse Cymbal",
+		// Sound effects
+		"Guitar Fret Noise",
+		"Breath Noise",
+		"Seashore",
+		"Bird Tweet",
+		"Telephone Ring",
+		"Helicopter",
+		"Applause",
+		"Gunshot"
+};
+
 void initialize() {
 	tu_printf("%s\n", __func__);
 
@@ -69,13 +213,25 @@ void initialize() {
 	}
 
 	for (int i = 0; i < NUM_BANKS; i++) {
-		banks[i].top = 0;
-		banks[i].bottom = 1;
+		banks[i].top = 1;
+		banks[i].bottom = 0;
 	}
 	memcpy(prev_banks, banks, sizeof(prev_banks));
 
 	HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
 
+	tu_printf("Send program %d %s\n", program, program_name[program]);
+	// Send program change on channel 1.
+	uint8_t prog_change[2] = { 0xC0 | channel, program };
+	tud_midi_stream_write(cable_num, prog_change, 2);
+
+	SW_I2C_initial();
+    i2c_port_initial(SW_I2C1);
+    ssd1306_Init();
+
+    ssd1306_SetCursor(2, 0);
+    ssd1306_WriteString("Fatar61", Font_16x26, White);
+    ssd1306_UpdateScreen();
 }
 
 void trigger(midikey_t *key, event_t event) {
@@ -197,29 +353,54 @@ void scan(void) {
 	}
 }
 
+
+void displayProgram() {
+	char line = 0;
+	char buf[40];
+	char *bufPtr = buf;
+	ssd1306_Fill(Black);
+	if(program == sent_prog) {
+		snprintf(buf, sizeof(buf), "[%d]", program);
+	}
+	else {
+		snprintf(buf, sizeof(buf), "%d", program);
+	}
+	ssd1306_SetCursor(2, line*19);
+	bufPtr = ssd1306_WriteString(bufPtr, Font_11x18, White);
+	line++;
+	snprintf(buf, sizeof(buf), "%s", program_name[program]);
+	bufPtr = buf;
+	while(bufPtr) {
+		ssd1306_SetCursor(2, line*19);
+		bufPtr = ssd1306_WriteString(bufPtr, Font_11x18, White);
+		line++;
+		if(line > 3) break;
+	}
+    ssd1306_UpdateScreen();
+}
+
 void encoder(void) {
 	uint32_t encoder_val;
 	static uint32_t old_encoder = 0;
-	static uint32_t now = 0;
-	static int update = 0;
 
 	encoder_val = (TIM1->CNT) >> 2;
 
 	if (old_encoder != encoder_val) {
-		now = HAL_GetTick();
-		update = 1;
 		old_encoder = encoder_val;
-	}
-
-	if (HAL_GetTick() - now > 200 && update) {
 		program = encoder_val % 127;
-		// Send program change on channel 1.
-		uint8_t prog_change[2] = { 0xC0 | channel, program };
-		tud_midi_stream_write(cable_num, prog_change, 2);
-		tu_printf("PC %d\n", program);
-		update = 0;
+		displayProgram();
 	}
 
+	if(HAL_GPIO_ReadPin(ENC_BTN_GPIO_Port, ENC_BTN_Pin) == GPIO_PIN_RESET) {
+		if(sent_prog != program) {
+			sent_prog = program;
+			tu_printf("Send program %d %s\n", program, program_name[program]);
+			displayProgram();
+			// Send program change on channel 1.
+			uint8_t prog_change[2] = { 0xC0 | channel, program };
+			tud_midi_stream_write(cable_num, prog_change, 2);
+		}
+	}
 }
 
 void midi_task() {
