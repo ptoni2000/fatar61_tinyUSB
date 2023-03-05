@@ -208,7 +208,7 @@ void initialize() {
 
 	// Init keys
 	for (int key = 0; key < NUM_KEYS; key++) {
-		keys[key].midi_note = 24 + key;
+		keys[key].midi_note = 36 + key;
 		keys[key].t = 0;
 	}
 
